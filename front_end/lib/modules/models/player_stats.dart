@@ -17,13 +17,15 @@ class PlayerStats {
     required this.jogos,
   });
 
-  factory PlayerStats.fromJson(Map<String, dynamic> json) => PlayerStats(
-    pontos: json['pontos'],
-    assistencias: json['assistencias'],
-    rebotes: json['rebotes'],
-    roubos: json['roubos'],
-    bloqueios: json['bloqueios'],
-    overall: json['overall'],
-    jogos: json['jogos'],
-  );
+  factory PlayerStats.fromJson(Map<String, dynamic> json) {
+    return PlayerStats(
+      pontos: json['pontos'] ?? 0,
+      assistencias: json['assistencias'] ?? 0,
+      rebotes: json['rebotes'] ?? 0,
+      roubos: json['roubos'] ?? 0,
+      bloqueios: json['bloqueios'] ?? 0,
+      overall: json['overall'] ?? 0,
+      jogos: json['jogos'] ?? 0,
+    );
+  }
 }

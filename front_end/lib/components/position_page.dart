@@ -1,8 +1,9 @@
 // ignore_for_file: avoid_print
-import 'package:front_end/app_colors.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:front_end/components/buscar_jogador_page.dart';
+import 'package:front_end/app_colors.dart';
+import 'package:front_end/components/profile_page.dart';
+import 'package:front_end/services/api_services.dart';
 
 class PositionPage extends StatefulWidget {
   const PositionPage({super.key});
@@ -12,11 +13,12 @@ class PositionPage extends StatefulWidget {
 }
 
 class _PositionPageState extends State<PositionPage> {
-
-  double idade = 10.0;
-  double altura = 1.40;
+  double idade = 18;
+  double altura = 1.70;
 
   int selectIndex = -1;
+  bool loading = false;
+
   final List<String> positions = [
     "Armador",
     "Ala-Armador",
@@ -26,13 +28,43 @@ class _PositionPageState extends State<PositionPage> {
     "Não sei",
   ];
 
-  void confirmar() {
-    print("Idade: ${idade.toInt()}");
-    print("Altura ${altura.toStringAsFixed(2)}");
-    print(
-      "Posição: ${selectIndex >= 0 ? positions[selectIndex] : positions[5]}",
+Future<void> confirmar() async {
+  if (selectIndex < 0) return;
+
+  setState(() => loading = true);
+
+ 
+  final Map<String, String> tradutorPosicao = {
+    "Armador": "armador",
+    "Ala-Armador": "ala_armador",
+    "Ala": "ala",
+    "Ala-Pivô": "ala_pivo",
+    "Pivô": "pivo",
+    "Não sei": "nao_sei",
+  };
+
+  final posicaoFormatada = tradutorPosicao[positions[selectIndex]] ?? "nao_sei";
+
+  final sucesso = await ApiService.updateProfile({
+    "idade": idade.toInt(),
+    "altura": altura,
+    "posicao_preferida": posicaoFormatada, 
+  });
+
+  if (!mounted) return;
+  setState(() => loading = false);
+
+  if (sucesso) {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (_) => const ProfilePage()),
+    );
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Erro ao salvar perfil. Verifique os dados.")),
     );
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -44,12 +76,11 @@ class _PositionPageState extends State<PositionPage> {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                textAlign: TextAlign.center,
+              const Text(
                 "Qual a posição que você gosta de jogar?",
                 style: TextStyle(
                   color: AppColors.laranja,
@@ -57,26 +88,27 @@ class _PositionPageState extends State<PositionPage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: 35),
-        
+
+              const SizedBox(height: 35),
+
+              // POSIÇÕES
               SizedBox(
                 height: 80,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: positions.length,
                   itemBuilder: (context, index) {
-                    bool isSelected = selectIndex == index;
+                    final isSelected = selectIndex == index;
+
                     return GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          selectIndex = index;
-                        });
-                      },
+                      onTap: () => setState(() => selectIndex = index),
                       child: Container(
-                        margin: EdgeInsets.only(right: 10),
-                        padding: EdgeInsets.symmetric(horizontal: 20),
+                        margin: const EdgeInsets.only(right: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
                         decoration: BoxDecoration(
-                          color: isSelected ? AppColors.laranja : Colors.transparent,
+                          color: isSelected
+                              ? AppColors.laranja
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: AppColors.laranja),
                         ),
@@ -84,7 +116,9 @@ class _PositionPageState extends State<PositionPage> {
                           child: Text(
                             positions[index],
                             style: TextStyle(
-                              color: isSelected ? AppColors.preto : AppColors.branco,
+                              color: isSelected
+                                  ? AppColors.preto
+                                  : AppColors.branco,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -94,88 +128,103 @@ class _PositionPageState extends State<PositionPage> {
                   },
                 ),
               ),
-        
-              SizedBox(height: 50),
+
+              const SizedBox(height: 50),
+
+              // IDADE
               Text(
                 "Idade: ${idade.toInt()}",
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.laranja,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
+
               SizedBox(
                 height: 150,
                 child: CupertinoPicker(
                   scrollController: FixedExtentScrollController(
                     initialItem: idade.toInt() - 10,
                   ),
-                  itemExtent:  40, 
-                  onSelectedItemChanged: (int index){
+                  itemExtent: 40,
+                  onSelectedItemChanged: (index) {
                     setState(() {
                       idade = (index + 10).toDouble();
                     });
-                  }, 
-                  children: List<Widget>.generate(51, (int index){
+                  },
+                  children: List.generate(51, (index) {
                     return Center(
                       child: Text(
                         "${index + 10}",
-                        style: TextStyle(color: AppColors.laranja, fontSize: 24),
+                        style: const TextStyle(
+                          color: AppColors.laranja,
+                          fontSize: 24,
+                        ),
                       ),
                     );
-                  })
-                  ),
+                  }),
+                ),
               ),
-              SizedBox(height: 20),
-        
+
+              const SizedBox(height: 20),
+
+              // ALTURA
               Text(
                 "Altura: ${altura.toStringAsFixed(2)} m",
-                style: TextStyle(
+                style: const TextStyle(
                   color: AppColors.laranja,
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
+
               Slider(
                 value: altura,
                 min: 1.40,
                 max: 2.30,
-                divisions: 80,
+                divisions: 90,
                 activeColor: AppColors.laranja,
                 onChanged: (value) {
-                  setState(() {
-                    altura = value;
-                  });
+                  setState(() => altura = value);
                 },
               ),
-        
-              SizedBox(height: 150),
-        
+
+              const SizedBox(height: 100),
+
+              // BOTÃO
               SizedBox(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: selectIndex >= 0 
-                  ? () {
-                    Navigator.push(
-                      context, 
-                      MaterialPageRoute(builder: (context) => BuscarJogadorPage()));
-                     }
-                  : null,
+                  onPressed: (selectIndex >= 0 && !loading)
+                      ? confirmar
+                      : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: selectIndex >= 0 ? AppColors.laranja : Colors.grey,
+                    backgroundColor: selectIndex >= 0
+                        ? AppColors.laranja
+                        : Colors.grey,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(50),
                     ),
                   ),
-                  child: Text(
-                    "CONFIRMAR",
-                    style: TextStyle(
-                      color: AppColors.preto,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
+                  child: loading
+                      ? const SizedBox(
+                          width: 25,
+                          height: 25,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3,
+                            color: Colors.black,
+                          ),
+                        )
+                      : const Text(
+                          "CONFIRMAR",
+                          style: TextStyle(
+                            color: AppColors.preto,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ],

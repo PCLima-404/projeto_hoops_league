@@ -1,7 +1,8 @@
-// ignore_for_file: avoid_print
+// ignore_for_file: use_build_context_synchronously, avoid_print
 import 'package:flutter/material.dart';
 import 'package:front_end/components/cadastro_page.dart';
 import 'package:front_end/components/position_page.dart';
+import 'package:front_end/services/api_services.dart'; 
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -11,29 +12,40 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final TextEditingController userController = TextEditingController();
+  final TextEditingController emailController = TextEditingController(); 
   final TextEditingController passwordController = TextEditingController();
 
   bool obscurePassword = true;
+  bool loading = false; 
+
   static const preto = Color(0xFF1A1413);
   static const laranja = Color(0xFFED5223);
   static const branco = Color(0xFFFDFDFD);
-  static const vermelho = Color(0xFFB71C1C);
 
   final formKey = GlobalKey<FormState>();
 
-  void login() {
-    if (formKey.currentState!.validate()) {
-      String user = userController.text;
-      String password = passwordController.text;
+ 
+  void login() async {
+    if (!formKey.currentState!.validate()) return;
 
-      print("Usuário: $user");
-      print("Senha $password");
+    setState(() => loading = true);
 
-      Navigator.push(context, MaterialPageRoute(builder: (context) => PositionPage()));
+    bool sucesso = await ApiService.login(
+      emailController.text,
+      passwordController.text,
+    );
 
+    setState(() => loading = false);
+
+    if (sucesso) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => PositionPage()),
+      );
     } else {
-      print("Login inválido!");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Email ou senha inválidos")),
+      );
     }
   }
 
@@ -48,7 +60,6 @@ class _LoginPageState extends State<LoginPage> {
           child: Form(
             key: formKey,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.start,
               children: [
                 Padding(
                   padding: const EdgeInsets.only(top: 120),
@@ -57,7 +68,6 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       Image.asset("assets/images/logoPequena.png", height: 60),
                       SizedBox(width: 18),
-
                       Text(
                         "Hoops League",
                         style: TextStyle(
@@ -71,6 +81,7 @@ class _LoginPageState extends State<LoginPage> {
                 ),
 
                 SizedBox(height: 50),
+
                 const Text(
                   "ENTRAR",
                   style: TextStyle(
@@ -82,69 +93,42 @@ class _LoginPageState extends State<LoginPage> {
 
                 SizedBox(height: 30),
 
+               
                 TextFormField(
-                  controller: userController,
+                  controller: emailController,
                   style: TextStyle(color: branco),
                   decoration: InputDecoration(
+                    labelText: "Email",
                     labelStyle: TextStyle(color: branco),
-                    labelText: "Usuário",
-                    errorStyle: TextStyle(
-                      color: vermelho,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    prefixIcon: Icon(
-                      Icons.supervised_user_circle,
-                      color: branco,
-                    ),
-                    hintText: "Digite seu apelido",
+                    prefixIcon: Icon(Icons.email, color: branco),
+                    hintText: "Digite seu email",
                     hintStyle: TextStyle(color: branco),
-
-                    contentPadding: EdgeInsets.symmetric(vertical: 18),
-
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide(color: branco),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: branco, width: 2),
                     ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return "Informe o usuário";
+                      return "Informe o email";
                     }
                     return null;
                   },
                 ),
+
                 SizedBox(height: 20),
 
+               
                 TextFormField(
                   controller: passwordController,
-                  style: TextStyle(color: branco),
                   obscureText: obscurePassword,
+                  style: TextStyle(color: branco),
                   decoration: InputDecoration(
-                    prefixIcon: Icon(Icons.verified_user, color: branco),
+                    prefixIcon: Icon(Icons.lock, color: branco),
                     hintText: "Digite sua senha",
                     hintStyle: TextStyle(color: branco),
-                    label: Text("Senha"),
+                    labelText: "Senha",
                     labelStyle: TextStyle(color: branco),
-                    errorStyle: TextStyle(
-                      color: vermelho,
-                      fontWeight: FontWeight.bold,
-                    ),
-
-                    contentPadding: EdgeInsets.symmetric(vertical: 20),
-
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: branco),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: branco, width: 2),
-                    ),
-
                     suffixIcon: IconButton(
                       onPressed: () {
                         setState(() {
@@ -158,6 +142,10 @@ class _LoginPageState extends State<LoginPage> {
                         color: branco,
                       ),
                     ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      borderSide: BorderSide(color: branco),
+                    ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -169,33 +157,32 @@ class _LoginPageState extends State<LoginPage> {
 
                 SizedBox(height: 30),
 
+                
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: login,
+                    onPressed: loading ? null : login,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: preto,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(50),
                       ),
                     ),
-                    child: Text(
-                      "LOGIN",
-                      style: TextStyle(fontSize: 16, color: branco),
-                    ),
+                    child: loading
+                        ? CircularProgressIndicator(color: branco)
+                        : Text(
+                            "LOGIN",
+                            style: TextStyle(fontSize: 16, color: branco),
+                          ),
                   ),
                 ),
 
                 SizedBox(height: 70),
 
-                SizedBox(
-                  child: Text(
-                    "Não tem uma conta?",
-                    style: TextStyle(
-                      color: const Color.fromARGB(255, 179, 178, 178),
-                    ),
-                  ),
+                Text(
+                  "Não tem uma conta?",
+                  style: TextStyle(color: Colors.grey[300]),
                 ),
 
                 SizedBox(height: 16),
@@ -207,7 +194,9 @@ class _LoginPageState extends State<LoginPage> {
                     onPressed: () {
                       Navigator.push(
                         context,
-                        MaterialPageRoute(builder: (context) => CadastroPage()),
+                        MaterialPageRoute(
+                          builder: (context) => CadastroPage(),
+                        ),
                       );
                     },
                     style: ElevatedButton.styleFrom(

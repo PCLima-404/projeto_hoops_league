@@ -1,10 +1,12 @@
-// ignore_for_file: use_build_context_synchronously, avoid_print
+// ignore_for_file: use_build_context_synchronously
 
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:front_end/components/buscar_jogador_page.dart';
 import 'package:front_end/modules/models/jogador.dart';
-import 'package:front_end/modules/models/partida.dart';
+import 'package:http/http.dart' as http;
+import 'package:front_end/services/api_services.dart';
 
 class CadastroPartidaPage extends StatefulWidget {
   const CadastroPartidaPage({super.key});
@@ -22,101 +24,120 @@ class _CadastroPartidaPageState extends State<CadastroPartidaPage> {
   final horaController = TextEditingController();
 
   DateTime? dataSelecionada;
-
   List<Jogador> jogadoresSelecionados = [];
 
+
   Future<void> selecionarData() async {
-    final DateTime? picked = await showDatePicker(
+    final picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
-      firstDate: DateTime(2026),
-      lastDate: DateTime(4200),
-      locale: Locale('pt', 'BR'),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+      locale: const Locale('pt', 'BR'),
     );
 
     if (picked != null) {
-      setState(() {
-        dataSelecionada = picked;
-      });
+      setState(() => dataSelecionada = picked);
     }
   }
 
+
   Future<void> selecionarHora() async {
-    final TimeOfDay? picked = await showTimePicker(
+    final picked = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.now(),
     );
+
     if (picked != null) {
-      setState(() {
-        horaController.text = picked.format(context);
-      });
+      final horaFormatada =
+          "${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}";
+      setState(() => horaController.text = horaFormatada);
     }
   }
 
+  // ================= BUSCAR JOGADORES =================
   Future<void> irParaBusca() async {
     final resultado = await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => BuscarJogadorPage(modoConvite: true),
+        builder: (_) => const BuscarJogadorPage(modoConvite: true),
       ),
     );
 
     if (resultado != null && resultado is List<Jogador>) {
       setState(() {
-        jogadoresSelecionados.addAll(resultado);
+        jogadoresSelecionados = resultado;
       });
     }
   }
 
-  void criarPartida() {
+  // ================= CRIAR PARTIDA (BACKEND) =================
+  Future<void> criarPartida() async {
     if (localController.text.isEmpty ||
         dataSelecionada == null ||
         horaController.text.isEmpty) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Preencha todos os campos")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Preencha todos os campos")),
+      );
       return;
     }
-    late final partida = Partida(
-      local: localController.text,
-      data: dataSelecionada!,
-      horario: horaController.text,
-      jogadores: jogadoresSelecionados,
-    );
-    print("Partida criada");
-    print(partida.local);
-    print(partida.data);
-    print(partida.horario);
-    print(jogadoresSelecionados.map((j) => j.nome).toList());
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text("Partida criada com sucesso")));
+    try {
+      final response = await http.post(
+        Uri.parse("${ApiService.baseUrl}/jogos/criar"),
+        headers: ApiService.headers,
+        body: jsonEncode({
+          "fk_Competicao_id": 1, // ⚠️ AJUSTAR (ID real da competição)
+          "data": DateFormat('yyyy-MM-dd').format(dataSelecionada!),
+          "horario": horaController.text
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Partida criada com sucesso")),
+        );
+
+        Navigator.pop(context);
+      } else {
+        print(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Erro ao criar partida")),
+        );
+      }
+    } catch (e) {
+      print(e);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Erro de conexão")),
+      );
+    }
   }
 
+  // ================= UI =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: preto,
       appBar: AppBar(
-        title: Text("CRIAÇÃO DE PARTIDA"),
+        title: const Text("CRIAÇÃO DE PARTIDA"),
         backgroundColor: laranja,
         foregroundColor: branco,
         centerTitle: true,
       ),
       body: Padding(
-        padding: EdgeInsets.all(20),
+        padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Local", style: TextStyle(color: branco)),
-            SizedBox(height: 5),
+            const Text("Local", style: TextStyle(color: branco)),
+            const SizedBox(height: 5),
 
             TextField(
               controller: localController,
+              style: const TextStyle(color: branco),
               decoration: InputDecoration(
-                hintText: "Informe a local:",
-                hintStyle: TextStyle(color: branco, fontSize: 14),
+                hintText: "Informe o local",
+                hintStyle: const TextStyle(color: branco),
                 filled: true,
                 fillColor: laranja,
                 border: OutlineInputBorder(
@@ -126,15 +147,15 @@ class _CadastroPartidaPageState extends State<CadastroPartidaPage> {
               ),
             ),
 
-            SizedBox(height: 15),
+            const SizedBox(height: 15),
 
-            Text("Data do jogo", style: TextStyle(color: branco)),
-            SizedBox(height: 5),
+            const Text("Data do jogo", style: TextStyle(color: branco)),
+            const SizedBox(height: 5),
 
             GestureDetector(
               onTap: selecionarData,
               child: Container(
-                padding: EdgeInsets.all(15),
+                padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
                   color: laranja,
                   borderRadius: BorderRadius.circular(10),
@@ -144,25 +165,25 @@ class _CadastroPartidaPageState extends State<CadastroPartidaPage> {
                   children: [
                     Text(
                       dataSelecionada == null
-                          ? "Selecionar data:"
-                          : 'Data Selecionada: ${DateFormat('dd/MM/y').format(dataSelecionada!)}',
-                      style: TextStyle(color: branco),
+                          ? "Selecionar data"
+                          : DateFormat('dd/MM/yyyy').format(dataSelecionada!),
+                      style: const TextStyle(color: branco),
                     ),
-                    Icon(Icons.calendar_today, color: branco),
+                    const Icon(Icons.calendar_today, color: branco),
                   ],
                 ),
               ),
             ),
 
-            SizedBox(height: 15),
+            const SizedBox(height: 15),
 
-            Text("Horário do jogo", style: TextStyle(color: branco)),
-            SizedBox(height: 5),
+            const Text("Horário do jogo", style: TextStyle(color: branco)),
+            const SizedBox(height: 5),
 
             GestureDetector(
               onTap: selecionarHora,
               child: Container(
-                padding: EdgeInsets.all(15),
+                padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
                   color: laranja,
                   borderRadius: BorderRadius.circular(10),
@@ -172,38 +193,38 @@ class _CadastroPartidaPageState extends State<CadastroPartidaPage> {
                   children: [
                     Text(
                       horaController.text.isEmpty
-                          ? "Selecionar horário:"
+                          ? "Selecionar horário"
                           : horaController.text,
-                      style: TextStyle(color: branco),
+                      style: const TextStyle(color: branco),
                     ),
-                    Icon(Icons.access_time, color: branco),
+                    const Icon(Icons.access_time, color: branco),
                   ],
                 ),
               ),
             ),
 
-            SizedBox(height: 15),
+            const SizedBox(height: 15),
 
-            Text("Jogadores Convidados", style: TextStyle(color: branco)),
-            SizedBox(height: 5),
+            const Text("Jogadores", style: TextStyle(color: branco)),
+            const SizedBox(height: 5),
 
             GestureDetector(
               onTap: irParaBusca,
               child: Container(
-                padding: EdgeInsets.all(15),
+                padding: const EdgeInsets.all(15),
                 decoration: BoxDecoration(
                   color: laranja,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text("Convidar...", style: TextStyle(color: branco)),
+                child: const Text("Convidar jogadores", style: TextStyle(color: branco)),
               ),
             ),
 
-            SizedBox(height: 15),
+            const SizedBox(height: 15),
 
             Expanded(
               child: jogadoresSelecionados.isEmpty
-                  ? Center(
+                  ? const Center(
                       child: Text(
                         "Nenhum jogador selecionado",
                         style: TextStyle(color: branco),
@@ -211,40 +232,28 @@ class _CadastroPartidaPageState extends State<CadastroPartidaPage> {
                     )
                   : ListView.builder(
                       itemCount: jogadoresSelecionados.length,
-                      itemBuilder: (context, index) {
-                        final jogador = jogadoresSelecionados[index];
+                      itemBuilder: (_, index) {
+                        final j = jogadoresSelecionados[index];
 
-                        return Container(
-                          margin: EdgeInsets.only(bottom: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.grey[300],
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(color: preto),
+                        return ListTile(
+                          title: Text(
+                            j.nome,
+                            style: const TextStyle(color: branco),
                           ),
-                          child: ListTile(
-                            title: Text(
-                              jogador.nome.toUpperCase(),
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                letterSpacing: 1.2,
-                              ),
-                            ),
-                            trailing: IconButton(
-                              onPressed: () {
-                                setState(() {
-                                  jogadoresSelecionados.remove(jogador);
-                                });
-                              },
-                              icon: Icon(Icons.close, color: Colors.red),
-                            ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.close, color: Colors.red),
+                            onPressed: () {
+                              setState(() {
+                                jogadoresSelecionados.removeAt(index);
+                              });
+                            },
                           ),
                         );
                       },
                     ),
             ),
 
-            SizedBox(height: 15),
+            const SizedBox(height: 10),
 
             SizedBox(
               width: double.infinity,
@@ -257,12 +266,11 @@ class _CadastroPartidaPageState extends State<CadastroPartidaPage> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                 ),
-                child: Text(
-                  "CRIA PARTIDA",
+                child: const Text(
+                  "CRIAR PARTIDA",
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
                     color: preto,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),

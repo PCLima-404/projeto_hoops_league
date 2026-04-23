@@ -7,8 +7,8 @@ load_dotenv()
 
 SECRET_KEY=os.getenv("SECRET_KEY")
 ALGORITHM= os.getenv("ALGORITHM")
-ACESS_TOKEN_EXPIRE_MINUTES=int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
 
-bcrypy_context = CryptContext(schemes=["bcrypt"],deprecated="auto")
+bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_schema = OAuth2PasswordBearer(tokenUrl="auth/login-form")

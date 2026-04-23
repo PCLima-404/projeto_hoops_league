@@ -1,6 +1,7 @@
-// ignore_for_file: use_key_in_widget_constructors, library_private_types_in_public_api, avoid_print, unused_local_variable
+// ignore_for_file: use_key_in_widget_constructors
 import 'package:front_end/components/position_page.dart';
 import 'package:flutter/material.dart';
+import 'package:front_end/services/api_services.dart'; // 👈 IMPORTANTE
 
 class CadastroPage extends StatefulWidget {
   @override
@@ -12,8 +13,7 @@ class _CadastroPageState extends State<CadastroPage> {
   final TextEditingController nomeController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
-  final TextEditingController passwordconfirmController =
-      TextEditingController();
+  final TextEditingController passwordconfirmController = TextEditingController();
 
   final formKey = GlobalKey<FormState>();
 
@@ -23,25 +23,36 @@ class _CadastroPageState extends State<CadastroPage> {
 
   bool obscurePassword = true;
   bool obscurePasswordConfirmar = true;
-  void cadastro() {
-    if (formKey.currentState!.validate()) {
-      String nome = nomeController.text;
-      String user = userController.text;
-      String email = emailController.text;
-      String password = passwordController.text;
-      String passwordConfirm = passwordconfirmController.text;
+  bool loading = false;
 
-      print("Formulário válido");
-      print("Usuário  $user");
 
-      Navigator.push(
+void cadastro() async {
+  if (formKey.currentState!.validate()) {
+    final sucesso = await ApiService.register({
+      "user": userController.text,
+      "nome": nomeController.text,
+      "email": emailController.text,
+      "senha": passwordController.text,
+      "confirmar_senha": passwordconfirmController.text,
+      "idade": 0, // depois vamos preencher
+      "altura": 0.0,
+      "posicao_preferida": "nao_sei"
+    });
+
+    if (sucesso) {
+      await ApiService.login(emailController.text, passwordController.text);
+
+      Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => PositionPage()),
+        MaterialPageRoute(builder: (_) => PositionPage()),
       );
     } else {
-      print("Formulário Inválido");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Erro ao cadastrar")),
+      );
     }
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -72,86 +83,72 @@ class _CadastroPageState extends State<CadastroPage> {
                   ),
                 ),
                 SizedBox(height: 8),
+
                 Text(
-                  "Quer se desafiar e entrar para a elite do \nbasquete amador? Então não perca tempo!\nCrie seu perfil na HP!",
-                  style: TextStyle(color: branco, fontSize: 15),
+                  "Quer se desafiar e entrar para a elite do basquete amador?",
+                  style: TextStyle(color: branco),
                 ),
+
                 SizedBox(height: 15),
+
+                // NOME
                 TextFormField(
                   controller: nomeController,
                   style: TextStyle(color: branco),
                   decoration: InputDecoration(
-                    labelText: "Nome:",
+                    labelText: "Nome",
                     labelStyle: TextStyle(color: branco),
-                    prefixIcon: Icon(
-                      Icons.people,
-                      color: branco,
-                    ),
-                    hintText: "Informe seu nome completo",
-                    contentPadding: EdgeInsets.symmetric(vertical: 18),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: branco),
-                    ),
+                    prefixIcon: Icon(Icons.person, color: branco),
                   ),
                   validator: (value) =>
-                      value!.isEmpty ? "informe o nome completo" : null,
+                      value!.isEmpty ? "Informe o nome" : null,
                 ),
+
                 SizedBox(height: 15),
+
+                // USER
                 TextFormField(
                   controller: userController,
                   style: TextStyle(color: branco),
                   decoration: InputDecoration(
-                    labelText: "Usuário:",
+                    labelText: "Usuário",
                     labelStyle: TextStyle(color: branco),
-                    prefixIcon: Icon(Icons.supervised_user_circle, color: branco,),
-                    hintText: "Digite seu usuário",
-                    hintStyle: TextStyle(color: branco),
-                    contentPadding: EdgeInsets.symmetric(vertical: 18),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: branco)
-                    )
+                    prefixIcon: Icon(Icons.account_circle, color: branco),
                   ),
-                  validator: (value) => value!.isEmpty ? "Informe o usuário" : null,
+                  validator: (value) =>
+                      value!.isEmpty ? "Informe o usuário" : null,
                 ),
+
                 SizedBox(height: 15),
+
+                // EMAIL
                 TextFormField(
                   controller: emailController,
                   style: TextStyle(color: branco),
                   decoration: InputDecoration(
-                    labelText: "E-mail:",
+                    labelText: "Email",
                     labelStyle: TextStyle(color: branco),
-                    hintText: "Jogador@mail.com",
-                    prefixIcon: Icon(Icons.email_outlined, color: branco),
-                    contentPadding: EdgeInsets.symmetric(vertical: 18),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: branco),
-                    ),
+                    prefixIcon: Icon(Icons.email, color: branco),
                   ),
                   validator: (value) {
                     if (value == null || !value.contains('@')) {
-                      return "email inválido";
+                      return "Email inválido";
                     }
                     return null;
                   },
                 ),
+
                 SizedBox(height: 15),
+
+                // SENHA
                 TextFormField(
                   controller: passwordController,
-                  style: TextStyle(color: branco),
                   obscureText: obscurePassword,
+                  style: TextStyle(color: branco),
                   decoration: InputDecoration(
-                    labelText: "Senha:",
+                    labelText: "Senha",
                     labelStyle: TextStyle(color: branco),
-                    hintText: "Digite sua senha",
-                    prefixIcon: Icon(Icons.supervised_user_circle, color: branco),
-                    contentPadding: EdgeInsets.symmetric(vertical: 18),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: branco),
-                    ),
+                    prefixIcon: Icon(Icons.lock, color: branco),
                     suffixIcon: IconButton(
                       onPressed: () {
                         setState(() {
@@ -167,92 +164,50 @@ class _CadastroPageState extends State<CadastroPage> {
                     ),
                   ),
                 ),
+
                 SizedBox(height: 15),
+
+                // CONFIRMAR SENHA
                 TextFormField(
                   controller: passwordconfirmController,
-                  style: TextStyle(color: branco),
                   obscureText: obscurePasswordConfirmar,
+                  style: TextStyle(color: branco),
                   decoration: InputDecoration(
-                    labelText: "    Confirmação senha",
+                    labelText: "Confirmar senha",
                     labelStyle: TextStyle(color: branco),
-                    hintText: "Confirme sua senha",
-                    contentPadding: EdgeInsets.symmetric(vertical: 18),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: branco),
-                    ),
-                    suffixIcon: IconButton(
-                      onPressed: () {
-                        setState(() {
-                          obscurePasswordConfirmar = !obscurePasswordConfirmar;
-                        });
-                      },
-                      icon: Icon(
-                        obscurePasswordConfirmar
-                            ? Icons.visibility
-                            : Icons.visibility_off,
-                        color: branco,
-                      ),
-                    ),
                   ),
                   validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return "confirme sua senha";
-                    }
                     if (value != passwordController.text) {
-                      return "As senhas não são iguais";
+                      return "Senhas diferentes";
                     }
                     return null;
                   },
                 ),
+
                 SizedBox(height: 30),
 
+                // BOTÃO
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: cadastro,
+                    onPressed: loading ? null : cadastro,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: laranja,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(50),
                       ),
                     ),
-                    child: Text(
-                      "CADASTRAR",
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: preto,
-                      ),
-                    ),
-                  ),
-                ),
-                SizedBox(height: 15),
-                RichText(
-                  textAlign: TextAlign.center,
-                  text: TextSpan(
-                    style: TextStyle(color: branco, fontSize: 14),
-                    children: [
-                      TextSpan(
-                        text: "Clicando em 'cadastrar' você aceita nossos",
-                      ),
-                      TextSpan(
-                        text: " termos",
-                        style: TextStyle(
-                          color: laranja,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      TextSpan(text: " e "),
-                      TextSpan(
-                        text: "condições",
-                        style: TextStyle(
-                          color: laranja,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
+                    child: loading
+                        ? CircularProgressIndicator(color: preto)
+                        : Text(
+                            "CADASTRAR",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: preto,
+                            ),
+                          ),
                   ),
                 ),
               ],

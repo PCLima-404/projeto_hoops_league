@@ -4,16 +4,16 @@ class Jogador {
   String nome;
   String usuario;
   int overall;
-  String ImgUrl;
+  String foto_url;
   int idade;
   String email;
   double altura;
 
   Jogador({
     required this.nome,
-    required this.overall,
-    this.ImgUrl = " ",
     required this.usuario,
+    required this.overall,
+    this.foto_url = "",
     required this.idade,
     required this.email,
     required this.altura,
@@ -21,24 +21,25 @@ class Jogador {
 
   factory Jogador.fromJson(Map<String, dynamic> json) {
     return Jogador(
-      nome: json['nome'],
-      usuario: json['usuario'],
-      overall: json['overall'],
-      ImgUrl: json['ImgUrl'],
-      idade: json['ImgUrl'],
-      email: json['email'],
-      altura: json['altura'],
+      nome: json['nome'] ?? "",
+      usuario: json['user'] ?? "", // 🔥 corrigido (backend usa 'user')
+      overall: json['overall'] ?? 0,
+      foto_url: json['foto_url'] ?? "", // 🔥 fallback seguro
+      idade: json['idade'] ?? 0, // 🔥 corrigido
+      email: json['email'] ?? "",
+      altura: (json['altura'] ?? 0).toDouble(), // 🔥 evita erro de tipo
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'nome': nome,
-      'usuario': usuario,
+      'user': usuario, 
       'overall': overall,
-      'ImgUrl': ImgUrl,
-      'email' : email,
-      'altura' : altura,
+      'foto_url': foto_url,
+      'idade': idade,
+      'email': email,
+      'altura': altura,
     };
   }
 }
