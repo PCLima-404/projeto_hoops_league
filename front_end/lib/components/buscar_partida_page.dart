@@ -6,8 +6,6 @@ import 'package:front_end/components/profile_page.dart';
 import 'package:front_end/components/buscar_jogador_page.dart';
 import 'package:front_end/components/cadastro_partida_page.dart';
 import 'package:front_end/components/edit_partida_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 
 class BuscarPartidaPage extends StatefulWidget {
   const BuscarPartidaPage({super.key});
@@ -29,40 +27,11 @@ class _BuscarPageState extends State<BuscarPartidaPage> {
   bool loading = true;
   Map<String, dynamic>? usuarioLogado;
 
-  // ── Persistência ──────────────────────────────────────────
-  static const _prefKey = 'recentes_partidas';
-
-  Future<void> _carregarRecentes() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_prefKey);
-    if (raw != null) {
-      setState(() => recentes = List<dynamic>.from(jsonDecode(raw)));
-    }
-  }
-
-  Future<void> _salvarRecentes() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefKey, jsonEncode(recentes.take(10).toList()));
-  }
-
-  void _adicionarRecente(dynamic partida) {
-    recentes.removeWhere((p) => p['id'] == partida['id']);
-    recentes.insert(0, partida);
-    _salvarRecentes();
-  }
-
-  void _removerRecente(dynamic partida) {
-    setState(() => recentes.removeWhere((p) => p['id'] == partida['id']));
-    _salvarRecentes();
-  }
-  // ──────────────────────────────────────────────────────────
-
   @override
   void initState() {
     super.initState();
     carregarPartidas();
     carregarUsuario();
-    _carregarRecentes();
   }
 
   void carregarUsuario() async {
@@ -79,16 +48,25 @@ class _BuscarPageState extends State<BuscarPartidaPage> {
     });
   }
 
+  void _adicionarRecente(dynamic partida) {
+    setState(() {
+      recentes.removeWhere((p) => p['id'] == partida['id']);
+      recentes.insert(0, partida);
+    });
+  }
+
+  void _removerRecente(dynamic partida) {
+    setState(() => recentes.removeWhere((p) => p['id'] == partida['id']));
+  }
+
   void buscar(String texto) {
     if (texto.isEmpty) {
       setState(() => filtrados = []);
       return;
     }
-
     final resultado = partidas.where((p) {
       return (p["local"] ?? "").toLowerCase().contains(texto.toLowerCase());
     }).toList();
-
     setState(() {
       filtrados = resultado;
       for (var partida in filtrados) {
@@ -125,7 +103,6 @@ class _BuscarPageState extends State<BuscarPartidaPage> {
     final sucesso = await ApiService.delete("/comp/deletar/$id");
     if (sucesso) {
       setState(() => recentes.removeWhere((p) => p['id'] == id));
-      _salvarRecentes();
       carregarPartidas();
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text("Partida deletada")));
@@ -135,27 +112,22 @@ class _BuscarPageState extends State<BuscarPartidaPage> {
     }
   }
 
-  
   Future<void> convidarJogadores(int compId) async {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => BuscarJogadorPage(
-          modoConvite: true,
-          compId: compId, 
-        ),
+        builder: (_) => BuscarJogadorPage(modoConvite: true, compId: compId),
       ),
     );
   }
-  
 
   Widget cardPartida(dynamic partida, {bool isRecente = false}) {
-    final int id          = partida["id"];
-    final String local    = partida["local"] ?? "Sem local";
-    final String status   = partida["status"] ?? "";
-    final String tipo     = partida["tipo"] ?? "";
-    final String visib    = partida["visibilidade"] ?? "";
-    final bool isDono     = usuarioLogado != null &&
+    final int id       = partida["id"];
+    final String local  = partida["local"] ?? "Sem local";
+    final String status = partida["status"] ?? "";
+    final String tipo   = partida["tipo"] ?? "";
+    final String visib  = partida["visibilidade"] ?? "";
+    final bool isDono   = usuarioLogado != null &&
         partida["fk_Jogador_id"] == usuarioLogado!["id"];
 
     return GestureDetector(
@@ -176,19 +148,14 @@ class _BuscarPageState extends State<BuscarPartidaPage> {
                 backgroundColor: laranja,
                 child: Icon(Icons.sports_basketball, color: branco),
               ),
-              title: Text(
-                local,
-                style: const TextStyle(
-                    color: laranja, fontWeight: FontWeight.bold),
-              ),
-              subtitle: Text(
-                "$tipo • $visib",
-                style: const TextStyle(color: preto),
-              ),
+              title: Text(local,
+                  style: const TextStyle(
+                      color: laranja, fontWeight: FontWeight.bold)),
+              subtitle: Text("$tipo • $visib",
+                  style: const TextStyle(color: preto)),
               trailing: isRecente
                   ? IconButton(
-                      icon: const Icon(Icons.close,
-                          size: 18, color: preto),
+                      icon: const Icon(Icons.close, size: 18, color: preto),
                       onPressed: () => _removerRecente(partida),
                     )
                   : isDono
@@ -209,8 +176,7 @@ class _BuscarPageState extends State<BuscarPartidaPage> {
                               },
                             ),
                             IconButton(
-                              icon: const Icon(Icons.delete,
-                                  color: Colors.red),
+                              icon: const Icon(Icons.delete, color: Colors.red),
                               onPressed: () => excluir(id),
                             ),
                           ],
@@ -237,21 +203,16 @@ class _BuscarPageState extends State<BuscarPartidaPage> {
                       color: _corStatus(status),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text(
-                      status,
-                      style: const TextStyle(
-                          color: branco, fontWeight: FontWeight.bold),
-                    ),
+                    child: Text(status,
+                        style: const TextStyle(
+                            color: branco, fontWeight: FontWeight.bold)),
                   ),
-                  // Botão convidar só aparece se for dono
                   if (isDono)
                     TextButton.icon(
                       onPressed: () => convidarJogadores(id),
                       icon: const Icon(Icons.person_add, color: laranja),
-                      label: const Text(
-                        "Convidar",
-                        style: TextStyle(color: laranja),
-                      ),
+                      label: const Text("Convidar",
+                          style: TextStyle(color: laranja)),
                     ),
                 ],
               ),
@@ -262,80 +223,141 @@ class _BuscarPageState extends State<BuscarPartidaPage> {
     );
   }
 
-  void _mostrarOpcoesPartida(dynamic partida, bool isDono) {
+  void _mostrarOpcoesPartida(dynamic partida, bool isDono) async {
+    final jogadores =
+        await ApiService.get("/comp/${partida["id"]}/jogadores") ?? [];
+
     showModalBottomSheet(
       context: context,
       backgroundColor: preto,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              partida["local"] ?? "Partida",
-              style: const TextStyle(
-                  color: laranja,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              "Status: ${partida["status"]} • Tipo: ${partida["tipo"]}",
-              style: const TextStyle(color: branco),
-            ),
-            const Divider(color: Colors.grey),
-            if (isDono) ...[
-              ListTile(
-                leading: const Icon(Icons.person_add, color: laranja),
-                title: const Text("Convidar jogadores",
-                    style: TextStyle(color: branco)),
-                onTap: () {
-                  Navigator.pop(context);
-                  convidarJogadores(partida["id"]);
-                },
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.6,
+        minChildSize: 0.4,
+        maxChildSize: 0.9,
+        builder: (_, controller) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: ListView(
+            controller: controller,
+            children: [
+              Text(
+                partida["local"] ?? "Partida",
+                style: const TextStyle(
+                    color: laranja,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold),
               ),
-              ListTile(
-                leading: const Icon(Icons.edit, color: laranja),
-                title: const Text("Editar partida",
-                    style: TextStyle(color: branco)),
-                onTap: () async {
-                  Navigator.pop(context);
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) =>
-                          EditPartidaPage(compId: partida["id"]),
-                    ),
-                  );
-                  carregarPartidas();
-                },
+              const SizedBox(height: 5),
+              Text(
+                "Status: ${partida["status"]} • Tipo: ${partida["tipo"]}",
+                style: const TextStyle(color: branco),
               ),
-              ListTile(
-                leading: const Icon(Icons.delete, color: Colors.red),
-                title: const Text("Deletar partida",
-                    style: TextStyle(color: Colors.red)),
-                onTap: () {
-                  Navigator.pop(context);
-                  excluir(partida["id"]);
-                },
+              const Divider(color: Colors.grey),
+
+              // ── Lista de jogadores ──
+              const Text(
+                "Jogadores convidados",
+                style: TextStyle(
+                    color: branco, fontWeight: FontWeight.bold),
               ),
-            ] else ...[
-              // Não-dono só pode ver detalhes
-              ListTile(
-                leading: const Icon(Icons.info_outline, color: laranja),
-                title: const Text("Detalhes da partida",
-                    style: TextStyle(color: branco)),
-                subtitle: Text(
-                  "Qtd. máx: ${partida["qtd_max_jogadores"]} jogadores",
-                  style: const TextStyle(color: Colors.grey),
+              const SizedBox(height: 8),
+              if (jogadores.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    "Nenhum jogador convidado ainda",
+                    style: TextStyle(color: Colors.grey),
+                  ),
+                )
+              else
+                ...jogadores
+                    .map<Widget>((j) => ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const CircleAvatar(
+                            backgroundColor: laranja,
+                            child: Icon(Icons.person, color: branco),
+                          ),
+                          title: Text(j["user"] ?? "",
+                              style: const TextStyle(color: branco)),
+                          subtitle: Text(
+                            "OVR: ${j["overall"]} • ${j["resposta"] ?? ""}",
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                          trailing: isDono
+                              ? IconButton(
+                                  icon: const Icon(Icons.close,
+                                      color: Colors.red),
+                                  onPressed: () async {
+                                    Navigator.pop(context);
+                                    await ApiService.delete(
+                                        "/comp/${partida["id"]}/remover/${j["id"]}");
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                          content: Text(
+                                              "${j["user"]} removido da partida")),
+                                    );
+                                    carregarPartidas();
+                                  },
+                                )
+                              : null,
+                        ))
+                    .toList(),
+
+              const Divider(color: Colors.grey),
+
+              
+              if (isDono) ...[
+                ListTile(
+                  leading: const Icon(Icons.person_add, color: laranja),
+                  title: const Text("Convidar jogadores",
+                      style: TextStyle(color: branco)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    convidarJogadores(partida["id"]);
+                  },
                 ),
-              ),
+                ListTile(
+                  leading: const Icon(Icons.edit, color: laranja),
+                  title: const Text("Editar partida",
+                      style: TextStyle(color: branco)),
+                  onTap: () async {
+                    Navigator.pop(context);
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            EditPartidaPage(compId: partida["id"]),
+                      ),
+                    );
+                    carregarPartidas();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete, color: Colors.red),
+                  title: const Text("Deletar partida",
+                      style: TextStyle(color: Colors.red)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    excluir(partida["id"]);
+                  },
+                ),
+              ] else ...[
+                ListTile(
+                  leading: const Icon(Icons.info_outline, color: laranja),
+                  title: const Text("Detalhes da partida",
+                      style: TextStyle(color: branco)),
+                  subtitle: Text(
+                    "Qtd. máx: ${partida["qtd_max_jogadores"]} jogadores",
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -343,15 +365,14 @@ class _BuscarPageState extends State<BuscarPartidaPage> {
 
   Color _corStatus(String status) {
     switch (status) {
-      case "em_aberto":   return Colors.blue;
-      case "confirmado":  return Colors.green;
-      case "cancelado":   return Colors.red;
-      case "encerrado":   return Colors.grey;
-      default:            return Colors.orange;
+      case "em_aberto":  return Colors.blue;
+      case "confirmado": return Colors.green;
+      case "cancelado":  return Colors.red;
+      case "encerrado":  return Colors.grey;
+      default:           return Colors.orange;
     }
   }
 
- 
   Widget _secaoRecentes() {
     if (recentes.isEmpty) {
       return const Center(
@@ -374,10 +395,7 @@ class _BuscarPageState extends State<BuscarPartidaPage> {
                   color: branco, fontWeight: FontWeight.bold, fontSize: 14),
             ),
             TextButton(
-              onPressed: () {
-                setState(() => recentes.clear());
-                _salvarRecentes();
-              },
+              onPressed: () => setState(() => recentes.clear()),
               child: const Text("Limpar tudo",
                   style: TextStyle(color: laranja, fontSize: 12)),
             ),
@@ -390,7 +408,6 @@ class _BuscarPageState extends State<BuscarPartidaPage> {
       ],
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -433,9 +450,7 @@ class _BuscarPageState extends State<BuscarPartidaPage> {
             if (loading)
               const Center(child: CircularProgressIndicator())
             else if (!buscando)
-              Expanded(
-                child: ListView(children: [_secaoRecentes()]),
-              )
+              Expanded(child: ListView(children: [_secaoRecentes()]))
             else if (filtrados.isEmpty)
               const Expanded(
                 child: Center(
@@ -484,11 +499,14 @@ class _BuscarPageState extends State<BuscarPartidaPage> {
           }
         },
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home, size: 35,), label: ''),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.home, size: 35), label: ''),
           BottomNavigationBarItem(
               icon: Icon(Icons.sports_basketball, size: 35), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.search, size: 35), label: ''),
-          BottomNavigationBarItem(icon: Icon(Icons.person, size: 35), label: ''),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.search, size: 35), label: ''),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.person, size: 35), label: ''),
         ],
       ),
     );

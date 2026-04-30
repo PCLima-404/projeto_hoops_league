@@ -33,9 +33,9 @@ class LoginSchema(BaseModel):
 
 class UsuarioPublico(BaseModel):
     id: int
-    user:str
+    user: Optional[str] = None
     nome:str
-    email:str
+    email: Optional[str] = None 
     idade:int
     altura: float
     pontos:int

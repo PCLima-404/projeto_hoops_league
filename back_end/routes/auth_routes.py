@@ -105,10 +105,14 @@ async def login(dados_formulario: OAuth2PasswordRequestForm = Depends(),session:
         }      
     
 @auth_router.get("/buscar-usuario/{user}", response_model=List[UsuarioPublico])
-async def buscar_jogador(user:str,session:Session=Depends(pegar_sessao),usuario:Jogador=Depends(verificar_token)):
-    if usuario.ativo!=True:
-        raise HTTPException(status_code=500,detail="Seu Usuario não existe")
-    usuarios=session.query(Jogador).filter(Jogador.user.ilike(f"%{user}%")).all()
+async def buscar_jogador(user: str, session: Session = Depends(pegar_sessao), usuario: Jogador = Depends(verificar_token)):
+    if usuario.ativo != True:
+        raise HTTPException(status_code=400, detail="Seu Usuario não existe")
+    
+    usuarios = session.query(Jogador).filter(
+        Jogador.user.ilike(f"%{user}%"),
+        Jogador.ativo == True 
+    ).all()
     return usuarios
  
 
@@ -154,7 +158,6 @@ async def editar_usuario(atualizar_usuario:EditarUsuarioSchema,session:Session=D
 @auth_router.put("/deletar-usuario")
 async def delete_user(session: Session = Depends(pegar_sessao), usuario: Jogador = Depends(verificar_token)):
     
-   
     comp_ativa = session.query(Competicao).filter(
         Competicao.fk_Jogador_id == usuario.id,
         Competicao.status.in_([StatusComp.em_aberto, StatusComp.confirmado])
@@ -166,7 +169,6 @@ async def delete_user(session: Session = Depends(pegar_sessao), usuario: Jogador
             detail="Você possui partidas em aberto ou confirmadas. Finalize-as antes de deletar sua conta."
         )
 
-    
     participacao_ativa = session.query(Participacao).filter(
         Participacao.fk_Jogador_id == usuario.id,
         Participacao.resposta == RespostaParticipacao.confirmado
@@ -175,10 +177,15 @@ async def delete_user(session: Session = Depends(pegar_sessao), usuario: Jogador
     if participacao_ativa:
         raise HTTPException(
             status_code=400,
-            detail="Você possui participações confirmadas em partidas. Finalize-as antes de deletar sua conta."
+            detail="Você possui participações confirmadas. Finalize-as antes de deletar sua conta."
         )
 
+   
     usuario.ativo = False
+    usuario.user = None       
+    usuario.email = None     
+    usuario.nome = "Usuário deletado"
+
     try:
         session.add(usuario)
         session.commit()

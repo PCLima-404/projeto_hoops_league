@@ -54,10 +54,10 @@ class Jogador(Base):
     __tablename__ = "Jogador"
 
     id: Mapped[int] = mapped_column(INTEGER(unsigned=True), primary_key=True, autoincrement=True)
-    user: Mapped[str] = mapped_column(String(100), nullable=False, unique=True)
+    user: Mapped[str] = mapped_column(String(100), nullable=True, unique=True)
     nome: Mapped[str] = mapped_column(String(250), nullable=False)
     idade: Mapped[int] = mapped_column(TINYINT(unsigned=True), nullable=False)
-    email: Mapped[str] = mapped_column(String(200), nullable=False)
+    email: Mapped[str] = mapped_column(String(200), nullable=True)
     altura: Mapped[float] = mapped_column(DECIMAL(3,2, unsigned=True), nullable=False)
     pontos: Mapped[int] = mapped_column(SMALLINT(unsigned=True), nullable=False)
     assistencias: Mapped[int] = mapped_column(SMALLINT(unsigned=True), nullable=False)

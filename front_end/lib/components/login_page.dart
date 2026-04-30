@@ -102,11 +102,19 @@ class _LoginPageState extends State<LoginPage> {
                     labelStyle: TextStyle(color: branco),
                     prefixIcon: Icon(Icons.email, color: branco),
                     hintText: "Digite seu email",
-                    hintStyle: TextStyle(color: branco),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: branco),
-                    ),
+                    hintStyle: TextStyle(color: Colors.grey),
+                     enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: branco),
+                  ),
+                  
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(
+                      color: branco,
+                      width: 2,
+                    ), 
+                  ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -126,7 +134,7 @@ class _LoginPageState extends State<LoginPage> {
                   decoration: InputDecoration(
                     prefixIcon: Icon(Icons.lock, color: branco),
                     hintText: "Digite sua senha",
-                    hintStyle: TextStyle(color: branco),
+                    hintStyle: TextStyle(color: Colors.grey),
                     labelText: "Senha",
                     labelStyle: TextStyle(color: branco),
                     suffixIcon: IconButton(
@@ -143,9 +151,17 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(16),
-                      borderSide: BorderSide(color: branco),
-                    ),
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(color: branco),
+                  ),
+                  
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: const BorderSide(
+                      color: branco,
+                      width: 2,
+                    ), 
+                  ),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {

@@ -3,9 +3,10 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:front_end/services/api_services.dart';
+import 'package:front_end/components/buscar_jogador_page.dart';
 
 class EditPartidaPage extends StatefulWidget {
-  final int compId; // ← trocado de jogoId para compId
+  final int compId;
 
   const EditPartidaPage({super.key, required this.compId});
 
@@ -29,6 +30,7 @@ class _EditPartidaPageState extends State<EditPartidaPage> {
   String status = "em_aberto";
   int qtdTimes = 2;
   int qtdMaxJogadores = 10;
+  List<dynamic> jogadoresConvidados = [];
 
   final List<Map<String, String>> visibilidades = const [
     {"value": "publico", "label": "Público"},
@@ -51,6 +53,9 @@ class _EditPartidaPageState extends State<EditPartidaPage> {
   Future<void> carregarDados() async {
     try {
       final response = await ApiService.get("/comp/${widget.compId}");
+      final jogadores =
+          await ApiService.get("/comp/${widget.compId}/jogadores") ?? [];
+
       if (response != null) {
         setState(() {
           localController.text = response["local"] ?? "";
@@ -58,8 +63,8 @@ class _EditPartidaPageState extends State<EditPartidaPage> {
           status = response["status"] ?? "em_aberto";
           qtdTimes = response["qtd_times"] ?? 2;
           qtdMaxJogadores = response["qtd_max_jogadores"] ?? 10;
+          jogadoresConvidados = jogadores;
 
-          // carrega data da partida se existir
           if (response["partida"] != null) {
             dataSelecionada =
                 DateTime.tryParse(response["partida"]["data"] ?? "");
@@ -77,6 +82,31 @@ class _EditPartidaPageState extends State<EditPartidaPage> {
       print("Erro ao carregar: $e");
       setState(() => loading = false);
     }
+  }
+
+  Future<void> _removerJogador(dynamic jogador) async {
+    await ApiService.delete(
+        "/comp/${widget.compId}/remover/${jogador["id"]}");
+    setState(() =>
+        jogadoresConvidados.removeWhere((j) => j["id"] == jogador["id"]));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("${jogador["user"]} removido")),
+    );
+  }
+
+  Future<void> _irParaConvite() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => BuscarJogadorPage(
+          modoConvite: true,
+          compId: widget.compId,
+        ),
+      ),
+    );
+    final jogadores =
+        await ApiService.get("/comp/${widget.compId}/jogadores") ?? [];
+    setState(() => jogadoresConvidados = jogadores);
   }
 
   Future<void> salvar() async {
@@ -148,7 +178,8 @@ class _EditPartidaPageState extends State<EditPartidaPage> {
 
   Widget _label(String texto) => Text(
         texto,
-        style: const TextStyle(color: branco, fontWeight: FontWeight.bold),
+        style:
+            const TextStyle(color: branco, fontWeight: FontWeight.bold),
       );
 
   Widget _dropdown<T>({
@@ -179,8 +210,8 @@ class _EditPartidaPageState extends State<EditPartidaPage> {
           items: items
               .map((i) => DropdownMenuItem<T>(
                     value: i["value"] as T,
-                    child:
-                        Text(i["label"]!, style: const TextStyle(color: branco)),
+                    child: Text(i["label"]!,
+                        style: const TextStyle(color: branco)),
                   ))
               .toList(),
           onChanged: onChanged,
@@ -212,11 +243,14 @@ class _EditPartidaPageState extends State<EditPartidaPage> {
             Text(
               "$value",
               style: const TextStyle(
-                  color: branco, fontSize: 20, fontWeight: FontWeight.bold),
+                  color: branco,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold),
             ),
             IconButton(
               onPressed: onIncrement,
-              icon: const Icon(Icons.add_circle, color: laranja, size: 32),
+              icon:
+                  const Icon(Icons.add_circle, color: laranja, size: 32),
             ),
           ],
         ),
@@ -248,7 +282,6 @@ class _EditPartidaPageState extends State<EditPartidaPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // ── Local ──
               _label("Local"),
               const SizedBox(height: 5),
               TextFormField(
@@ -269,7 +302,6 @@ class _EditPartidaPageState extends State<EditPartidaPage> {
 
               const SizedBox(height: 15),
 
-              // ── Data ──
               _label("Data"),
               const SizedBox(height: 5),
               GestureDetector(
@@ -286,7 +318,8 @@ class _EditPartidaPageState extends State<EditPartidaPage> {
                       Text(
                         dataSelecionada == null
                             ? "Selecionar data"
-                            : DateFormat('dd/MM/yyyy').format(dataSelecionada!),
+                            : DateFormat('dd/MM/yyyy')
+                                .format(dataSelecionada!),
                         style: const TextStyle(color: branco),
                       ),
                       const Icon(Icons.calendar_today, color: branco),
@@ -297,7 +330,6 @@ class _EditPartidaPageState extends State<EditPartidaPage> {
 
               const SizedBox(height: 15),
 
-              // ── Horário ──
               _label("Horário"),
               const SizedBox(height: 5),
               GestureDetector(
@@ -332,7 +364,6 @@ class _EditPartidaPageState extends State<EditPartidaPage> {
                 onChanged: (v) => setState(() => status = v!),
               ),
 
-              
               _dropdown<String>(
                 label: "Visibilidade",
                 value: visibilidade,
@@ -340,7 +371,6 @@ class _EditPartidaPageState extends State<EditPartidaPage> {
                 onChanged: (v) => setState(() => visibilidade = v!),
               ),
 
-             
               _contador(
                 label: "Quantidade de times",
                 value: qtdTimes,
@@ -349,7 +379,6 @@ class _EditPartidaPageState extends State<EditPartidaPage> {
                 onIncrement: () => setState(() => qtdTimes++),
               ),
 
-             
               _contador(
                 label: "Máximo de jogadores",
                 value: qtdMaxJogadores,
@@ -358,9 +387,58 @@ class _EditPartidaPageState extends State<EditPartidaPage> {
                 onIncrement: () => setState(() => qtdMaxJogadores++),
               ),
 
+              // ── Jogadores convidados ──
+              _label("Jogadores convidados"),
+              const SizedBox(height: 5),
+              GestureDetector(
+                onTap: _irParaConvite,
+                child: Container(
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    color: laranja,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: const [
+                      Icon(Icons.person_add, color: branco),
+                      SizedBox(width: 10),
+                      Text("Convidar jogadores",
+                          style: TextStyle(color: branco)),
+                    ],
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              if (jogadoresConvidados.isNotEmpty)
+                ListView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: jogadoresConvidados.length,
+                  itemBuilder: (_, index) {
+                    final j = jogadoresConvidados[index];
+                    return ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: laranja,
+                        child: Icon(Icons.person, color: branco),
+                      ),
+                      title: Text(j["user"] ?? "",
+                          style: const TextStyle(color: branco)),
+                      subtitle: Text(
+                        "OVR: ${j["overall"]} • ${j["resposta"] ?? ""}",
+                        style: const TextStyle(color: Colors.grey),
+                      ),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.close, color: Colors.red),
+                        onPressed: () => _removerJogador(j),
+                      ),
+                    );
+                  },
+                ),
+
               const SizedBox(height: 20),
 
-              
               SizedBox(
                 width: double.infinity,
                 height: 50,

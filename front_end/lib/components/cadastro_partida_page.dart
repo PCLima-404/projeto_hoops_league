@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:front_end/components/buscar_jogador_page.dart';
-import 'package:front_end/modules/models/jogador.dart';
 import 'package:front_end/services/api_services.dart';
 import 'dart:convert';
 
@@ -23,7 +22,6 @@ class _CadastroPartidaPageState extends State<CadastroPartidaPage> {
   final horaController = TextEditingController();
 
   DateTime? dataSelecionada;
-  List<Jogador> jogadoresSelecionados = [];
   bool loading = false;
 
   String visibilidade = "publico";
@@ -65,16 +63,6 @@ class _CadastroPartidaPageState extends State<CadastroPartidaPage> {
     }
   }
 
-  Future<void> irParaBusca() async {
-    final resultado = await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const BuscarJogadorPage(modoConvite: true)),
-    );
-    if (resultado != null && resultado is List<Jogador>) {
-      setState(() => jogadoresSelecionados = resultado);
-    }
-  }
-
   Future<void> criarPartida() async {
     if (localController.text.trim().isEmpty ||
         dataSelecionada == null ||
@@ -104,13 +92,25 @@ class _CadastroPartidaPageState extends State<CadastroPartidaPage> {
       setState(() => loading = false);
 
       if (compResponse.statusCode == 200 || compResponse.statusCode == 201) {
+        final compData = jsonDecode(compResponse.body);
+        final int compId = compData["id"];
+
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Partida criada com sucesso!"),
+            content: Text("Partida criada! Agora convide os jogadores."),
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context);
+
+        await Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => BuscarJogadorPage(
+              modoConvite: true,
+              compId: compId,
+            ),
+          ),
+        );
       } else {
         final erro = jsonDecode(compResponse.body);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -151,12 +151,14 @@ class _CadastroPartidaPageState extends State<CadastroPartidaPage> {
               borderRadius: BorderRadius.circular(10),
               borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
           ),
           items: items
               .map((i) => DropdownMenuItem<T>(
                     value: i["value"] as T,
-                    child: Text(i["label"]!, style: const TextStyle(color: branco)),
+                    child: Text(i["label"]!,
+                        style: const TextStyle(color: branco)),
                   ))
               .toList(),
           onChanged: onChanged,
@@ -219,7 +221,6 @@ class _CadastroPartidaPageState extends State<CadastroPartidaPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              
               _label("Local"),
               const SizedBox(height: 5),
               TextField(
@@ -239,7 +240,6 @@ class _CadastroPartidaPageState extends State<CadastroPartidaPage> {
 
               const SizedBox(height: 15),
 
-              
               _label("Data"),
               const SizedBox(height: 5),
               GestureDetector(
@@ -267,7 +267,6 @@ class _CadastroPartidaPageState extends State<CadastroPartidaPage> {
 
               const SizedBox(height: 15),
 
-              
               _label("Horário"),
               const SizedBox(height: 5),
               GestureDetector(
@@ -295,7 +294,6 @@ class _CadastroPartidaPageState extends State<CadastroPartidaPage> {
 
               const SizedBox(height: 15),
 
-              
               _dropdown<String>(
                 label: "Visibilidade",
                 value: visibilidade,
@@ -303,15 +301,7 @@ class _CadastroPartidaPageState extends State<CadastroPartidaPage> {
                 onChanged: (v) => setState(() => visibilidade = v!),
               ),
 
-              
-              _dropdown<String>(
-                label: "Tipo",
-                value: tipo,
-                items: tipos,
-                onChanged: (v) => setState(() => tipo = v!),
-              ),
 
-            
               _contador(
                 label: "Quantidade de times",
                 value: qtdTimes,
@@ -320,7 +310,6 @@ class _CadastroPartidaPageState extends State<CadastroPartidaPage> {
                 onIncrement: () => setState(() => qtdTimes++),
               ),
 
-              
               _contador(
                 label: "Máximo de jogadores",
                 value: qtdMaxJogadores,
@@ -329,54 +318,8 @@ class _CadastroPartidaPageState extends State<CadastroPartidaPage> {
                 onIncrement: () => setState(() => qtdMaxJogadores++),
               ),
 
-              
-              _label("Jogadores"),
-              const SizedBox(height: 5),
-              GestureDetector(
-                onTap: irParaBusca,
-                child: Container(
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: laranja,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: const [
-                      Icon(Icons.person_add, color: branco),
-                      SizedBox(width: 10),
-                      Text("Convidar jogadores", style: TextStyle(color: branco)),
-                    ],
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              if (jogadoresSelecionados.isNotEmpty)
-                ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: jogadoresSelecionados.length,
-                  itemBuilder: (_, index) {
-                    final j = jogadoresSelecionados[index];
-                    return ListTile(
-                      leading: const CircleAvatar(
-                        backgroundColor: laranja,
-                        child: Icon(Icons.person, color: branco),
-                      ),
-                      title: Text(j.nome, style: const TextStyle(color: branco)),
-                      trailing: IconButton(
-                        icon: const Icon(Icons.close, color: Colors.red),
-                        onPressed: () =>
-                            setState(() => jogadoresSelecionados.removeAt(index)),
-                      ),
-                    );
-                  },
-                ),
-
               const SizedBox(height: 20),
 
-             
               SizedBox(
                 width: double.infinity,
                 height: 50,

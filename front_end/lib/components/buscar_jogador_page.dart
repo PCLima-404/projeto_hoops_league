@@ -2,15 +2,15 @@
 
 import 'package:flutter/material.dart';
 import 'package:front_end/app_colors.dart';
+import 'package:front_end/components/perfil_jogador_page.dart';
 import 'package:front_end/services/api_services.dart';
 import 'package:front_end/components/profile_page.dart';
 import 'package:front_end/components/buscar_partida_page.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
 class BuscarJogadorPage extends StatefulWidget {
   final bool modoConvite;
-  final int? compId; // ← ID da partida quando em modo convite
+  final int? compId;
 
   const BuscarJogadorPage({
     super.key,
@@ -30,43 +30,14 @@ class _BuscarPageState extends State<BuscarJogadorPage> {
   static const branco  = Color(0xFFFDFDFD);
 
   List<dynamic> filtrados = [];
-  List<dynamic> recentes  = [];
-  Set<int> convidados = {}; 
+  List<dynamic> recentes  = []; // ← apenas em memória, some ao fechar o app
+  Set<int> convidados = {};
   bool loading = false;
   Map<String, dynamic>? usuarioLogado;
-
-
-  static const _prefKey = 'recentes_jogadores';
-
-  Future<void> _carregarRecentes() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_prefKey);
-    if (raw != null) {
-      setState(() => recentes = List<dynamic>.from(jsonDecode(raw)));
-    }
-  }
-
-  Future<void> _salvarRecentes() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_prefKey, jsonEncode(recentes.take(10).toList()));
-  }
-
-  void _adicionarRecente(dynamic jogador) {
-    recentes.removeWhere((j) => j['id'] == jogador['id']);
-    recentes.insert(0, jogador);
-    _salvarRecentes();
-  }
-
-  void _removerRecente(dynamic jogador) {
-    setState(() => recentes.removeWhere((j) => j['id'] == jogador['id']));
-    _salvarRecentes();
-  }
-
 
   @override
   void initState() {
     super.initState();
-    _carregarRecentes();
     _carregarUsuarioLogado();
     if (widget.modoConvite && widget.compId != null) {
       _carregarJaConvidados();
@@ -78,7 +49,6 @@ class _BuscarPageState extends State<BuscarJogadorPage> {
     setState(() => usuarioLogado = data);
   }
 
- 
   Future<void> _carregarJaConvidados() async {
     final response = await ApiService.get("/comp/${widget.compId}/jogadores");
     if (response != null) {
@@ -88,6 +58,17 @@ class _BuscarPageState extends State<BuscarJogadorPage> {
         );
       });
     }
+  }
+
+  void _adicionarRecente(dynamic jogador) {
+    setState(() {
+      recentes.removeWhere((j) => j['id'] == jogador['id']);
+      recentes.insert(0, jogador);
+    });
+  }
+
+  void _removerRecente(dynamic jogador) {
+    setState(() => recentes.removeWhere((j) => j['id'] == jogador['id']));
   }
 
   void buscar(String texto) async {
@@ -112,7 +93,6 @@ class _BuscarPageState extends State<BuscarJogadorPage> {
     });
   }
 
-
   Future<void> _convidar(dynamic jogador) async {
     final int jogadorId = jogador['id'];
 
@@ -120,8 +100,7 @@ class _BuscarPageState extends State<BuscarJogadorPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: preto,
-        title: const Text("Convidar jogador",
-            style: TextStyle(color: laranja)),
+        title: const Text("Convidar jogador", style: TextStyle(color: laranja)),
         content: Text(
           "Adicionar ${jogador['user']} à partida?",
           style: const TextStyle(color: branco),
@@ -172,7 +151,6 @@ class _BuscarPageState extends State<BuscarJogadorPage> {
     Widget trailingWidget;
 
     if (widget.modoConvite) {
-
       trailingWidget = jaConvidado
           ? const Icon(Icons.check_circle, color: Colors.green, size: 28)
           : IconButton(
@@ -180,13 +158,11 @@ class _BuscarPageState extends State<BuscarJogadorPage> {
               onPressed: () => _convidar(jogador),
             );
     } else if (isRecente) {
-      // Modo normal + recente: botão fechar
       trailingWidget = IconButton(
         icon: const Icon(Icons.close, size: 18, color: preto),
         onPressed: () => _removerRecente(jogador),
       );
     } else {
-      // Modo normal: OVR
       trailingWidget = Text(
         "OVR: ${jogador["overall"]}",
         style: const TextStyle(fontWeight: FontWeight.bold),
@@ -221,14 +197,15 @@ class _BuscarPageState extends State<BuscarJogadorPage> {
             if (!isRecente) _adicionarRecente(jogador);
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const ProfilePage()),
+              MaterialPageRoute(
+                builder: (_) => PerfilJogadorPage(username: jogador["user"]),
+              ),
             );
           }
         },
       ),
     );
   }
-
 
   Widget _secaoRecentes() {
     if (recentes.isEmpty) {
@@ -255,10 +232,7 @@ class _BuscarPageState extends State<BuscarJogadorPage> {
               ),
             ),
             TextButton(
-              onPressed: () {
-                setState(() => recentes.clear());
-                _salvarRecentes();
-              },
+              onPressed: () => setState(() => recentes.clear()),
               child: const Text(
                 "Limpar tudo",
                 style: TextStyle(color: laranja, fontSize: 12),
@@ -273,7 +247,6 @@ class _BuscarPageState extends State<BuscarJogadorPage> {
       ],
     );
   }
-  
 
   @override
   Widget build(BuildContext context) {
@@ -357,7 +330,6 @@ class _BuscarPageState extends State<BuscarJogadorPage> {
           ],
         ),
       ),
-      // Sem bottom nav no modo convite
       bottomNavigationBar: widget.modoConvite
           ? null
           : BottomNavigationBar(
@@ -379,11 +351,14 @@ class _BuscarPageState extends State<BuscarJogadorPage> {
                 }
               },
               items: const [
-                BottomNavigationBarItem(icon: Icon(Icons.home, size: 35,), label: ''),
                 BottomNavigationBarItem(
-                    icon: Icon(Icons.sports_basketball, size: 35,), label: ''),
-                BottomNavigationBarItem(icon: Icon(Icons.search, size: 35,), label: ''),
-                BottomNavigationBarItem(icon: Icon(Icons.person, size: 35,), label: ''),
+                    icon: Icon(Icons.home, size: 35), label: ''),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.sports_basketball, size: 35), label: ''),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.search, size: 35), label: ''),
+                BottomNavigationBarItem(
+                    icon: Icon(Icons.person, size: 35), label: ''),
               ],
             ),
     );
